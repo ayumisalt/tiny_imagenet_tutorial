@@ -1,0 +1,7 @@
+numpy
+matplotlib
+scikit-image
+sympy
+scipy
+pandas
+tensorboard

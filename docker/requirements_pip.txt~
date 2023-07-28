@@ -1,0 +1,9 @@
+numpy
+matplotlib
+scikit-image
+sympy
+scipy
+affine6p
+pandas
+uncertainties
+tensorboard

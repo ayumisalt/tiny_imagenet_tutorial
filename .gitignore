@@ -1,0 +1,3 @@
+*.zip
+tiny-imagenet-200/*
+logs/*
