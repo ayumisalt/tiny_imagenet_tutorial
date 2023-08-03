@@ -1,1 +1,6 @@
-Tiny-ImageNet Oasobi
+* Tiny-ImageNet
+
+研究室内コンペを題材にしたGPUサーバーへの接続等に関するチュートリアル
+
+以下の記事に連動
+aaa
