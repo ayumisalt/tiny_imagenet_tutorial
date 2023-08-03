@@ -119,7 +119,7 @@ def train_and_evaluate_model(trial, base_path, batch_size=768):
 
     # Define TensorBoard callback to log metrics
     log_dir = "../logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-    tensorboard_callback = TensorBoard(log_dir=log_dir, histogram_freq=1)
+    tensorboard_callback = TensorBoard(log_dir=log_dir, histogram_freq=10)
 
     # Train the model
     model.fit(image_generator,
@@ -132,7 +132,7 @@ def train_and_evaluate_model(trial, base_path, batch_size=768):
     score = model.evaluate(image_generator_val, verbose=0)
 
     # Save the trained model
-    model.save(f"model_{trial.number}.h5")
+    model.save(f"{log_dir}/model_{trial.number}.h5")
 
     return score[1]  # Return the accuracy
 
