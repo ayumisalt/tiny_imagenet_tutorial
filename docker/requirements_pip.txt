@@ -4,6 +4,7 @@ scikit-image
 sympy
 scipy
 pandas
+black
 tensorboard
 optuna
 keras_efficientnets
