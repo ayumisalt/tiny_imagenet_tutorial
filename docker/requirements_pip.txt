@@ -5,3 +5,4 @@ sympy
 scipy
 pandas
 tensorboard
+optuna
