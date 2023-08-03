@@ -6,3 +6,4 @@ scipy
 pandas
 tensorboard
 optuna
+keras_efficientnets

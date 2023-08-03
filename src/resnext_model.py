@@ -6,12 +6,12 @@ import optuna
 
 import tensorflow.keras as keras
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, Dropout, Flatten
+from tensorflow.keras.layers import Dense, Dropout, Flatten, GlobalAveragePooling2D
 from tensorflow.keras.layers import Conv2D, MaxPooling2D
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.callbacks import LearningRateScheduler, TensorBoard
 from tensorflow.keras.layers import BatchNormalization
-from tensorflow.keras.layers import Add, Input, Activation, AveragePooling2D
+from tensorflow.keras.layers import add, Add, Input, Activation, AveragePooling2D
 
 # # 特権の付与
 # tf.config.experimental.set_memory_growth(tf.config.experimental.list_physical_devices('GPU')[0], True)
@@ -21,7 +21,7 @@ from tensorflow.keras.layers import Add, Input, Activation, AveragePooling2D
 def cosine_annealing_lr(epoch, lr, num_epochs=50):
     return lr * 0.5 * (1 + np.cos(np.pi * epoch / num_epochs))
 
-def load_images(base_path, batch_size=512):
+def load_images(base_path, batch_size=256):
 
     rand_seed = 42
 
@@ -65,44 +65,59 @@ def load_images(base_path, batch_size=512):
     
     return image_generator, image_generator_val
 
- 
-def create_model(num_layer, mid_units, num_filters, dropout_rate, learning_rate):
+def resnext_block(inputs, filters, cardinality=32, stride=1):
+    shortcut = inputs
+    expansion = 4
 
+    # 1x1の畳み込み
+    x = Conv2D(filters, kernel_size=1, strides=stride, padding='same')(inputs)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+
+    # 3x3のカーネルを持つ畳み込み
+    x = Conv2D(filters, kernel_size=3, strides=1, padding='same')(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+
+    # 1x1の畳み込み
+    x = Conv2D(filters * expansion, kernel_size=1, strides=1, padding='same')(x)
+    x = BatchNormalization()(x)
+
+    # ショートカットとの加算
+    if stride != 1 or filters * expansion != keras.backend.int_shape(shortcut)[-1]:
+        shortcut = Conv2D(filters * expansion, kernel_size=1, strides=stride, padding='same')(shortcut)
+        shortcut = BatchNormalization()(shortcut)
+
+    x = add([x, shortcut])
+    x = Activation('relu')(x)
+
+    return x
+
+def create_model(num_layer, mid_units, num_filters, dropout_rate, learning_rate):
     img_rows, img_cols = 64, 64
     num_classes = 200
 
     inputs = Input(shape=(img_rows, img_cols, 3))
-    x = Conv2D(filters=num_filters[0], kernel_size=(3, 3),
-               activation="relu")(inputs)
-    x = BatchNormalization()(x)
+    x = inputs
 
-    for i in range(1, num_layer):
-        # 残差ブロックを定義
-        residual = Conv2D(filters=num_filters[i], kernel_size=(3, 3), padding="same")(x)
-        residual = BatchNormalization()(residual)
-        x = Conv2D(filters=num_filters[i], kernel_size=(3, 3), padding="same")(x)
-        x = BatchNormalization()(x)
-        x = Add()([x, residual])  # スキップ接続
-        x = Activation("relu")(x)
+    # ResNeXtのブロックを積み重ねる
+    for i in range(num_layer):
+        x = resnext_block(x, num_filters[i])
 
-    x = MaxPooling2D(pool_size=(2, 2))(x)
-    x = Dropout(dropout_rate)(x)
-    x = Flatten()(x)
-    x = Dense(mid_units)(x)
-    x = BatchNormalization()(x)
+    # その他のレイヤーを追加する
+    x = GlobalAveragePooling2D()(x)
+    x = Dense(mid_units, activation='relu')(x)
     x = Dropout(dropout_rate)(x)
     outputs = Dense(num_classes, activation='softmax')(x)
 
-    model = keras.Model(inputs, outputs)
+    model = keras.models.Model(inputs=inputs, outputs=outputs)
 
-    print(model.summary)
-    
     return model
 
 
 
 # 定義したモデルをコンパイルし、学習を行う関数を定義
-def train_and_evaluate_model(trial, base_path, batch_size=512):
+def train_and_evaluate_model(trial, base_path, batch_size=256):
     # Generate the hyperparameter values based on the trial
     num_layer = trial.suggest_int('num_layer', 1, 8)
     mid_units = trial.suggest_int('mid_units', 32, 256)
@@ -148,7 +163,7 @@ def objective(trial):
     base_path = '/data00/public/ayumi/classifier/tiny_imagenet/tiny-imagenet-200'
 
     # Define the batch size for the image generators
-    batch_size = 512
+    batch_size = 256
 
     # Call the training and evaluation function with the current trial
     accuracy = train_and_evaluate_model(trial, base_path, batch_size)

@@ -17,10 +17,10 @@ from tensorflow.keras.layers import BatchNormalization
 
 # # os.environ["CUDA_VISIBLE_DEVICES"] = "0" 
 
-def cosine_annealing_lr(epoch, lr, num_epochs=120):
+def cosine_annealing_lr(epoch, lr, num_epochs=50):
     return lr * 0.5 * (1 + np.cos(np.pi * epoch / num_epochs))
 
-def load_images(base_path, batch_size=768):
+def load_images(base_path, batch_size=512):
 
     rand_seed = 42
 
@@ -95,7 +95,7 @@ def create_model(num_layer, mid_units, num_filters, dropout_rate, learning_rate)
 
 
 # 定義したモデルをコンパイルし、学習を行う関数を定義
-def train_and_evaluate_model(trial, base_path, batch_size=768):
+def train_and_evaluate_model(trial, base_path, batch_size=512):
     # Generate the hyperparameter values based on the trial
     num_layer = trial.suggest_int('num_layer', 1, 8)
     mid_units = trial.suggest_int('mid_units', 32, 256)
@@ -115,7 +115,7 @@ def train_and_evaluate_model(trial, base_path, batch_size=768):
                   metrics=['accuracy'])
     
     # Define the Learning Rate Scheduler callback
-    lr_scheduler = LearningRateScheduler(lambda epoch, lr: cosine_annealing_lr(epoch, lr, num_epochs=120))
+    lr_scheduler = LearningRateScheduler(lambda epoch, lr: cosine_annealing_lr(epoch, lr, num_epochs=50))
 
     # Define TensorBoard callback to log metrics
     log_dir = "../logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -124,7 +124,7 @@ def train_and_evaluate_model(trial, base_path, batch_size=768):
     # Train the model
     model.fit(image_generator,
               validation_data=image_generator_val,
-              epochs=120,
+              epochs=50,
               verbose=1,
               callbacks=[lr_scheduler, tensorboard_callback])
 
@@ -141,7 +141,7 @@ def objective(trial):
     base_path = '/data00/public/ayumi/classifier/tiny_imagenet/tiny-imagenet-200'
 
     # Define the batch size for the image generators
-    batch_size = 768
+    batch_size = 512
 
     # Call the training and evaluation function with the current trial
     accuracy = train_and_evaluate_model(trial, base_path, batch_size)

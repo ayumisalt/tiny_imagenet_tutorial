@@ -7,12 +7,12 @@ import optuna
 import tensorflow.keras as keras
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Dropout, Flatten
-from tensorflow.keras.layers import Conv2D, MaxPooling2D
+from tensorflow.keras.layers import Conv2D, MaxPooling2D, GlobalAveragePooling2D
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.callbacks import LearningRateScheduler, TensorBoard
 from tensorflow.keras.layers import BatchNormalization
 from tensorflow.keras.layers import Add, Input, Activation, AveragePooling2D
-
+from keras_efficientnets import EfficientNetB0
 # # 特権の付与
 # tf.config.experimental.set_memory_growth(tf.config.experimental.list_physical_devices('GPU')[0], True)
 
@@ -41,7 +41,7 @@ def load_images(base_path, batch_size=512):
     image_generator =image_datagen.flow_from_directory(base_path+ '/train',
                                                    class_mode='categorical',
                                                    seed=rand_seed,
-                                                   target_size=(64, 64),
+                                                   target_size=(224, 224),
                                                    batch_size=batch_size,
                                                    color_mode='rgb',
                                                    )
@@ -49,7 +49,7 @@ def load_images(base_path, batch_size=512):
     image_generator_val =image_datagen.flow_from_directory(base_path +'/val',
                                                    class_mode='categorical',
                                                    seed=rand_seed,
-                                                   target_size=(64, 64),
+                                                   target_size=(224, 224),
                                                    batch_size=batch_size,
                                                    color_mode='rgb',
                                                    )
@@ -66,55 +66,34 @@ def load_images(base_path, batch_size=512):
     return image_generator, image_generator_val
 
  
-def create_model(num_layer, mid_units, num_filters, dropout_rate, learning_rate):
+def create_model(num_classes=200, input_shape=(224, 224, 3)):
+    model = EfficientNetB0(weights=None, include_top=False, input_shape=input_shape)
 
-    img_rows, img_cols = 64, 64
-    num_classes = 200
+    # EfficientNetの最後の全結合層を追加します
+    x = model.output
+    x = GlobalAveragePooling2D()(x)
+    x = Dense(1024, activation='relu')(x)
+    x = Dropout(0.5)(x)
+    predictions = Dense(num_classes, activation='softmax')(x)
 
-    inputs = Input(shape=(img_rows, img_cols, 3))
-    x = Conv2D(filters=num_filters[0], kernel_size=(3, 3),
-               activation="relu")(inputs)
-    x = BatchNormalization()(x)
+    # モデルを結合します
+    model = keras.models.Model(inputs=model.input, outputs=predictions)
 
-    for i in range(1, num_layer):
-        # 残差ブロックを定義
-        residual = Conv2D(filters=num_filters[i], kernel_size=(3, 3), padding="same")(x)
-        residual = BatchNormalization()(residual)
-        x = Conv2D(filters=num_filters[i], kernel_size=(3, 3), padding="same")(x)
-        x = BatchNormalization()(x)
-        x = Add()([x, residual])  # スキップ接続
-        x = Activation("relu")(x)
-
-    x = MaxPooling2D(pool_size=(2, 2))(x)
-    x = Dropout(dropout_rate)(x)
-    x = Flatten()(x)
-    x = Dense(mid_units)(x)
-    x = BatchNormalization()(x)
-    x = Dropout(dropout_rate)(x)
-    outputs = Dense(num_classes, activation='softmax')(x)
-
-    model = keras.Model(inputs, outputs)
-
-    print(model.summary)
-    
     return model
+
 
 
 
 # 定義したモデルをコンパイルし、学習を行う関数を定義
 def train_and_evaluate_model(trial, base_path, batch_size=512):
     # Generate the hyperparameter values based on the trial
-    num_layer = trial.suggest_int('num_layer', 1, 8)
-    mid_units = trial.suggest_int('mid_units', 32, 256)
-    num_filters = [trial.suggest_int('num_filters', 16, 128) for i in range(num_layer)]
-    dropout_rate = trial.suggest_float('dropout_rate', 0.2, 0.5)
     learning_rate = trial.suggest_float('learning_rate', 1e-5, 1e-2, log=True)  # Log scale for learning rate search
 
     # Load the images using the provided function
     image_generator, image_generator_val = load_images(base_path, batch_size)
 
     # Create the model using the provided function
-    model = create_model(num_layer, mid_units, num_filters, dropout_rate, learning_rate)
+    model = create_model()
 
     # Compile the model
     model.compile(optimizer=keras.optimizers.Adam(learning_rate=learning_rate),
@@ -154,10 +133,10 @@ def objective(trial):
     accuracy = train_and_evaluate_model(trial, base_path, batch_size)
 
     # Log hyperparameters, loss, and accuracy to TensorBoard
-    trial.set_user_attr("num_layer", trial.params['num_layer'])
-    trial.set_user_attr("mid_units", trial.params['mid_units'])
-    trial.set_user_attr("num_filters", trial.params['num_filters'])
-    trial.set_user_attr("dropout_rate", trial.params['dropout_rate'])
+    # trial.set_user_attr("num_layer", trial.params['num_layer'])
+    # trial.set_user_attr("mid_units", trial.params['mid_units'])
+    # trial.set_user_attr("num_filters", trial.params['num_filters'])
+    # trial.set_user_attr("dropout_rate", trial.params['dropout_rate'])
     trial.set_user_attr("learning_rate", trial.params['learning_rate'])
     trial.set_user_attr("accuracy", accuracy)
 
