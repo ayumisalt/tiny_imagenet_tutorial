@@ -1,4 +1,4 @@
-FROM tensorflow/tensorflow:2.1.0-gpu-py3
+FROM tensorflow/tensorflow:latest-gpu
 
 # Set working directory
 WORKDIR /workspace
@@ -19,7 +19,6 @@ RUN rm -f /etc/apt/sources.list.d/cuda.list \
  && dpkg -i cuda-keyring_1.0-1_all.deb \
  && rm -f cuda-keyring_1.0-1_all.deb
 
-RUN apt-get update
 RUN cat requirements_apt.txt | xargs apt-get install -y \
       && apt-get clean \
             && rm -rf /var/lib/apt/lists/*

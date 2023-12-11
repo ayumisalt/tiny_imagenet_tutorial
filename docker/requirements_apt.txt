@@ -6,8 +6,6 @@ unzip
 build-essential
 emacs
 zsh
-python3-tk
-python3-pip
 git
 dpkg-dev
 cmake
@@ -23,7 +21,6 @@ gfortran
 libssl-dev
 libpcre3-dev
 xlibmesa-glu-dev
-libglew1.5-dev
 libftgl-dev
 libmysqlclient-dev
 libfftw3-dev
@@ -39,16 +36,11 @@ pkg-config
 libavcodec-dev
 libavformat-dev
 libswscale-dev
-python-dev
-python3-dev
-python-numpy
-python3-numpy
 libtbb2
 libtbb-dev
 libjpeg-dev
 libpng-dev
 libtiff-dev
-libdc1394-22-dev
 libgl1-mesa-dev
 freeglut3-dev
 libgl2ps-dev

@@ -141,7 +141,7 @@ def train_and_evaluate_model(trial, base_path, batch_size=512):
 
 def objective(trial):
     # Set the base path where the data is located
-    base_path = "/data00/public/ayumi/classifier/tiny_imagenet/tiny-imagenet-200"
+    base_path = "../tiny-imagenet-200"
 
     # Define the batch size for the image generators
     batch_size = 512
